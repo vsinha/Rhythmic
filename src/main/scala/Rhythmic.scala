@@ -2,78 +2,31 @@
  * Created by viraj on 2/25/15.
  */
 
-import java.awt.Button
 import java.awt.image.BufferedImage
-import java.io.{IOException, File}
-import java.util
-import java.util.ArrayList
+import java.io.File
 import java.util.logging.{Level, Logger}
-import javafx.beans.InvalidationListener
-import javafx.collections.{ListChangeListener, FXCollections, ObservableList}
 import javafx.embed.swing.SwingFXUtils
-import javafx.event.EventHandler
 import javax.imageio.ImageIO
 
 import org.jaudiotagger.audio.{AudioFile, AudioFileIO}
 import org.jaudiotagger.tag.FieldKey
-import org.jaudiotagger.tag.FieldKey._
-
-import scala.collection.JavaConversions._
 
 import scalafx.Includes._
 import scalafx.application.JFXApp
 import scalafx.application.JFXApp.PrimaryStage
-import scalafx.collections.ObservableBuffer
-import scalafx.event
 import scalafx.event.Event
 import scalafx.geometry._
 import scalafx.scene.control.ScrollPane.ScrollBarPolicy
 import scalafx.scene.image.{ImageView, Image}
-import scalafx.scene.{layout, Scene}
+import scalafx.scene.Scene
 import scalafx.scene.control._
-import scalafx.scene.input.{DragEvent, MouseEvent}
 import scalafx.scene.layout._
-import scalafx.scene.paint.Color._
-import scalafx.scene.paint.{LinearGradient, Stops, Color}
-import scalafx.scene.shape.{Circle, Rectangle}
-import scalafx.scene.text.Text
-import scalafx.stage.Stage
-import scalafxml.core.{NoDependencyResolver, FXMLView}
 
 
 object Rhythmic extends JFXApp {
 
-  val listView = new ListView[String]()
-
   val topDir = new File("/Users/viraj/Music/testMusicFolder")
-  val songs: List[AudioFile] = FileUtils.getAudioFilesInDirectory(topDir)
-  val songNames = songs.map(x => x.getTag.getFirst(FieldKey.TITLE))
-  val songNamesArrayList: util.ArrayList[String] = new util.ArrayList[String](songNames)
-//  val songNamesBuffer: ObservableBuffer[String] =
-  val observableList: ObservableList[String] = FXCollections.observableArrayList(new util.ArrayList[String] (songNamesArrayList))
-  listView.setItems(observableList)
-
-  songNames.map(s => println(s))
-
-  //println(songNames size)
-
-  val albumArt = songs.map(s => {
-    s.getTag.getArtworkList
-  })
-
-  //println(albumArt)
-
   val albums: List[Album] = FileUtils.getAlbumsInDirectory(topDir)
-
-  val textList = (0 to 20).map(_ => new Text {
-    text = "Hello3 "
-    style = "-fx-font-size: 24pt"
-    fill = new LinearGradient(
-      endX = 0,
-      stops = Stops(PALEGREEN, SEAGREEN))
-  })
-
-
 
   val albumCellPadding: Int = 2
   val startingScreenWidth: Int = 640
@@ -94,13 +47,7 @@ object Rhythmic extends JFXApp {
       }
 
       content = Seq (
-//        new Rectangle {
-//          width <== thisPane.width
-//          height <== width * 0.7
-//          fill <== when(hover) choose Color.DARKCYAN otherwise TEAL
-//        },
         new ImageView {
-
           def createAlbumImage(file: Option[File]): Image = {
             file match {
               case Some(f) => {
@@ -162,7 +109,7 @@ object Rhythmic extends JFXApp {
 //  }))
 
   val flowPane: FlowPane = new FlowPane {
-    prefWidth  = 640 // leave room for scroll bar
+    prefWidth  = 640
     prefHeight = 100
     orientation = Orientation.HORIZONTAL
     vgap = albumCellPadding
@@ -290,24 +237,7 @@ object FileUtils {
 
       List(newAlbum)
     }
-
-    // if there are any directories, recurse
-
-    // else:
-    // add mp3/flac files as Audio objects
-    // add any image files as the album art
   }
-
-  /*
-  def main (args: Array[String]): Unit = {
-    // turn down the jaudiotagger default log level
-    Logger.getLogger("org.jaudiotagger").setLevel(Level.WARNING)
-
-    val topDir = new File("/Users/viraj/Music/testMusicFolder")
-    val songs: List[AudioFile] = getAudioFilesInDirectory(topDir)
-    songs.map(x => println("album: " + x.getTag.getFirst(ALBUM) + ". filename: " + x.getFile.getName))
-  }
-  */
 }
 
 class Album(val name: String, val artist: String) {
