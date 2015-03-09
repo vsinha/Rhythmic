@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import java.lang.*?>
+<?import javafx.collections.*?>
+<?import javafx.geometry.*?>
+<?import javafx.scene.effect.*?>
+<?import javafx.scene.image.*?>
+<?import javafx.collections.FXCollections?>
+<?import javafx.geometry.Insets?>
+<?import javafx.scene.control.*?>
+<?import javafx.scene.effect.ColorAdjust?>
+<?import javafx.scene.effect.GaussianBlur?>
+<?import javafx.scene.image.Image?>
+<?import javafx.scene.image.ImageView?>
+<?import javafx.scene.layout.*?>
+<?import java.lang.String?>
+
+<?import javafx.scene.text.Text?>
+
+
+<?import javafx.scene.shape.Rectangle?>
+<FlowPane fx:controller="MainScreenPresenter"
+          xmlns:fx="http://javafx.com/fxml"
+          prefHeight="202"
+          prefWidth="202"
+        vgap="2"
+        hgap="2">
+
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+    <Rectangle fill="aqua" height="100" width="100" />
+
+</FlowPane>
