@@ -5,6 +5,7 @@
 import java.awt.image.BufferedImage
 import java.io.File
 import java.util.logging.{Level, Logger}
+import javafx.collections.{FXCollections, ObservableList}
 import javafx.embed.swing.SwingFXUtils
 import javax.imageio.ImageIO
 
@@ -20,93 +21,84 @@ import scalafx.scene.control.ScrollPane.ScrollBarPolicy
 import scalafx.scene.image.{ImageView, Image}
 import scalafx.scene.Scene
 import scalafx.scene.control._
+import scalafx.scene.input.{DragEvent, MouseEvent}
 import scalafx.scene.layout._
 
 
 object Rhythmic extends JFXApp {
 
+  // Log level for jaudiotagger is overly verbose by default
+  Logger.getLogger("org.jaudiotagger").setLevel(Level.WARNING)
+
   val topDir = new File("/Users/viraj/Music/testMusicFolder")
-  val albums: List[Album] = FileUtils.getAlbumsInDirectory(topDir)
+  //var albums: List[Album] = FileUtils.getAlbumsInDirectory(topDir)
 
   val albumCellPadding: Int = 2
   val startingScreenWidth: Int = 640
   val startingScreenHeight: Int = 480
 
-  val rectanglePanes = albums.map(album => new Pane { thisPane =>
-    style = "-fx-background-color: gray;"
-    padding = Insets(0, 0, albumCellPadding, albumCellPadding)
-    prefWidth = (startingScreenWidth / 4) - albumCellPadding
-    prefHeight <== prefWidth
-
-    content = new VBox { thisVbox =>
-      style = "-fx-background-color: gray;"
-
-      onMouseClicked = (e: Event) => {
-        println("mouse click!")
-        e.consume()
-      }
-
-      content = Seq (
-        new ImageView {
-          def createAlbumImage(file: Option[File]): Image = {
-            file match {
-              case Some(f) => {
-                println(f.getCanonicalPath)
-                val bufferedImage: BufferedImage = ImageIO.read(f)
-                SwingFXUtils.toFXImage(bufferedImage, null)
-              }
-              case None => {
-                println("no image file found")
-                new Image("defaultAlbumArtwork.jpg")
-              }
-            }
-          }
-
-          image = createAlbumImage(album.artworkFile)
-          fitWidth <== thisPane.width
-          preserveRatio = true
-          smooth = true
-          cache = true
-          opacity <== when (hover) choose 0.5 otherwise 1.0
-        }
-//        ,
-//        new Label {
-//          maxWidth <== thisPane.width
-//          //maxHeight <== thisPane.height * 0.1
-//          text = album.name
-//          style = "-fx-font-size: 8pt"
-//          //fill = BLACK
-//          alignment = Pos.BASELINE_CENTER
-//          visible <== when(hover) choose true otherwise false
-//        }
-// ,
-//        new Label {
-//          maxWidth <== thisPane.width
-//          //maxHeight <== thisPane.height * 0.1
-//          text = album.artist
-//          style = "-fx-font-size: 8pt"
-//          //fill = BLACK
-//          alignment = Pos.BASELINE_CENTER
-//        }
-      )
+  def moveToFront[A](y: A, xs: List[A]): List[A] = {
+    xs.span(_ != y) match {
+      case (as, h :: bs) => h :: as ++ bs
+      case _ => xs
     }
-  })
+  }
 
-//  rectanglePanes.map(p => p.setOnDragDetected((event: MouseEvent) => {
-//    println("click drag detected")
-//    event.consume()
-//  }))
+  var albums: List[Album] = FileUtils.getAlbumsInDirectory(topDir)
+  var albumList: ObservableList[Album] = FXCollections.observableArrayList()
+
+  albums.foreach { albumList.add }
+
+  var rectanglePanes: ObservableList[Pane] = createRectanglePanes
+
+  def createRectanglePanes: ObservableList[Pane] = {
+    val panes = albumList.map(f = album => new Pane {
+      thisPane =>
+      style = "-fx-background-color: gray;"
+      padding = Insets(0, 0, albumCellPadding, albumCellPadding)
+      prefWidth = (startingScreenWidth / 4) - albumCellPadding
+      prefHeight <== prefWidth
+
+      content = new VBox {
+        thisVbox =>
+        style = "-fx-background-color: gray;"
+
+        onMouseClicked = (e: Event) => {
+          println("mouse click!")
+          e.consume()
+
+          albumList.remove(album)
+          albumList.add(0, album)
+
+          albumList.map(a => println(a.name))
+
+          rectanglePanes = createRectanglePanes
+
+          updateFlowPane()
+        }
+
+        content = album.content(thisPane)
+      }
+    })
 //
-//  rectanglePanes.map(p => p.setOnDragOver((event: DragEvent) => {
-//    println("drag over detected")
-//    event.consume()
-//  }))
+//    panes.map(p => p.setOnDragDetected((event: MouseEvent) => {
+//      println("click drag detected")
+//      //event.consume()
+//    }))
 //
-//  rectanglePanes.map(p => p.setOnDragDropped((event: DragEvent) => {
-//    println("drop detected")
-//    event.setDropCompleted(true)
-//    event.consume()
-//  }))
+//    panes.map(p => p.setOnDragOver((event: Event) => {
+//      println("drag over detected")
+//      //event.consume()
+//    }))
+//
+//    panes.map(p => p.setOnDragDropped((event: Event) => {
+//      println("drop detected")
+//      //event.setDropCompleted(true)
+//      //event.consume()
+//    }))
+
+    panes
+  }
 
   val flowPane: FlowPane = new FlowPane {
     prefWidth  = 640
@@ -119,6 +111,10 @@ object Rhythmic extends JFXApp {
   }
   this.flowPane.setSnapToPixel(true)
 
+
+  def updateFlowPane(): Unit = {
+    flowPane.content = rectanglePanes
+  }
 
   def scaleRectangles(): Unit = {
     this.flowPane.setPrefWidth(this.scrollPane.getBoundsInLocal.getWidth)
@@ -203,44 +199,91 @@ object FileUtils {
   }
 
   def getAlbumsInDirectory(directory: File): List[Album] = {
-    // get all the files in the folder
-    val files: List[File] = directory.listFiles().toList
+
+    // initialize our list
     val albums: List[Album] = List[Album]()
 
-    // recurse into all the directories
+    // get all the files in the folder
+    val files: List[File] = directory.listFiles().toList
+
+    // recurse into all the directories, appending whatever is returned
     val dirs = files.filter(_.isDirectory)
 
     if (dirs.size != 0) {
+      // recurse if we find any directories at all
+      // this will skip any free-floating music files
       albums ::: dirs.foldLeft(List[Album]()) { (z, f) =>
         val subAlbums = getAlbumsInDirectory(f)
         z ::: subAlbums
       }
-    } else { // no directories, we're at a bottom level folder, which we assume
-             // is an album
+    } else {
+      // no directories, we're at a bottom level folder, which we assume is an album
       val audioFiles: List[AudioFile] = files.filter(_.isFile)
-        .filter(isMusicFiletype)
-        .map(AudioFileIO.read)
+                                             .filter(isMusicFiletype)
+                                             .map(AudioFileIO.read)
 
-      val albumName: String = audioFiles.head.getTag.getFirst(FieldKey.ALBUM)
-      val albumArtist: String = audioFiles.head.getTag.getFirst(FieldKey.ARTIST)
+      val newAlbum = new Album(audioFiles.head.getTag.getFirst(FieldKey.ALBUM),
+                               audioFiles.head.getTag.getFirst(FieldKey.ARTIST),
+                               audioFiles)
 
-      println("album: " + albumName + ", artist: " + albumArtist)
-
-      val newAlbum = new Album(albumName, albumArtist)
-
-      // replaced filter(isImageFiletype).headOption with find(isImageFiletype)
+      // set the album art if we can find any
       newAlbum.artworkFile = files.filter(_.isFile).find(isImageFiletype)
 
-      println(newAlbum.artworkFile)
-
-      newAlbum.songs = audioFiles
+      println("album: " + newAlbum.name + ", artist: " + newAlbum.artist
+        + ", artwork: " + newAlbum.artworkFile)
 
       List(newAlbum)
     }
   }
 }
 
-class Album(val name: String, val artist: String) {
-  var songs: List[AudioFile] = List()
+class Album(val name: String, val artist: String, var songs: List[AudioFile]) {
   var artworkFile: Option[File] = None
+
+  // create the panel to view this album
+  def content (parentPane: Pane) = {
+    Seq (
+      new ImageView {
+        def createAlbumImage(file: Option[File]): Image = {
+          file match {
+            case Some(f) => {
+              println(f.getCanonicalPath)
+              val bufferedImage: BufferedImage = ImageIO.read(f)
+              SwingFXUtils.toFXImage(bufferedImage, null)
+            }
+            case None => {
+              new Image("defaultAlbumArtwork.jpg")
+            }
+          }
+        }
+
+        image = createAlbumImage(artworkFile)
+        fitWidth <== parentPane.width
+        preserveRatio = true
+        smooth = true
+        cache = true
+        opacity <== when (hover) choose 0.5 otherwise 1.0
+      }
+    )
+  }
 }
+
+//        ,
+//        new Label {
+//          maxWidth <== thisPane.width
+//          //maxHeight <== thisPane.height * 0.1
+//          text = album.name
+//          style = "-fx-font-size: 8pt"
+//          //fill = BLACK
+//          alignment = Pos.BASELINE_CENTER
+//          visible <== when(hover) choose true otherwise false
+//        }
+// ,
+//        new Label {
+//          maxWidth <== thisPane.width
+//          //maxHeight <== thisPane.height * 0.1
+//          text = album.artist
+//          style = "-fx-font-size: 8pt"
+//          //fill = BLACK
+//          alignment = Pos.BASELINE_CENTER
+//        }
