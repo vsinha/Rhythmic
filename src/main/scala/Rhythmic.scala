@@ -31,7 +31,6 @@ object Rhythmic extends JFXApp {
   Logger.getLogger("org.jaudiotagger").setLevel(Level.WARNING)
 
   val topDir = new File("/Users/viraj/Music/testMusicFolder")
-  //var albums: List[Album] = FileUtils.getAlbumsInDirectory(topDir)
 
   val albumCellPadding: Int = 2
   val startingScreenWidth: Int = 640
@@ -44,9 +43,9 @@ object Rhythmic extends JFXApp {
     }
   }
 
+  // initialize the observable list of albums
   var albums: List[Album] = FileUtils.getAlbumsInDirectory(topDir)
   var albumList: ObservableList[Album] = FXCollections.observableArrayList()
-
   albums.foreach { albumList.add }
 
   var rectanglePanes: ObservableList[Pane] = createRectanglePanes
@@ -109,6 +108,7 @@ object Rhythmic extends JFXApp {
     columnHalignment = HPos.LEFT
     content = rectanglePanes
   }
+
   this.flowPane.setSnapToPixel(true)
 
 
@@ -117,6 +117,7 @@ object Rhythmic extends JFXApp {
   }
 
   def scaleRectangles(): Unit = {
+    // gets called whenever the main window size changes
     this.flowPane.setPrefWidth(this.scrollPane.getBoundsInLocal.getWidth)
     this.flowPane.setMaxWidth(this.scrollPane.getBoundsInLocal.getWidth)
     println("scrollpane width: " + this.scrollPane.getBoundsInLocal.getWidth)
@@ -158,7 +159,7 @@ object Rhythmic extends JFXApp {
     content = flowPane
   }
 
-  // keep the UI Cleaner
+  // keep the UI Cleaner by hiding scrollbars
   this.scrollPane.setVbarPolicy(ScrollBarPolicy.NEVER)
   this.scrollPane.setHbarPolicy(ScrollBarPolicy.NEVER)
 
@@ -181,8 +182,6 @@ object FileUtils {
 
   // recurse all the way down to find all MP3s
   def getAudioFilesInDirectory(directory: File): List[AudioFile] = {
-    Logger.getLogger("org.jaudiotagger").setLevel(Level.WARNING)
-
     println("dir: " + directory.getName)
 
     val files: List[File] = directory.listFiles().toList
@@ -192,13 +191,15 @@ object FileUtils {
                                  .filter(f => isMusicFiletype(f))
                                  .map(f => AudioFileIO.read(f))
 
+    // get all the directories
+    val dirs: List[File] = files.filter(_.isDirectory)
 
-    val dirs = files.filter(_.isDirectory)
-
+    // recurse into directories
     audioFiles ++ dirs.foldLeft(List[AudioFile]())((result, dir) => result ++ getAudioFilesInDirectory(dir))
   }
 
   def getAlbumsInDirectory(directory: File): List[Album] = {
+    // entirely based off folder structure rather than metadata
 
     // initialize our list
     val albums: List[Album] = List[Album]()
@@ -222,6 +223,7 @@ object FileUtils {
                                              .filter(isMusicFiletype)
                                              .map(AudioFileIO.read)
 
+      // create the album!
       val newAlbum = new Album(audioFiles.head.getTag.getFirst(FieldKey.ALBUM),
                                audioFiles.head.getTag.getFirst(FieldKey.ARTIST),
                                audioFiles)
