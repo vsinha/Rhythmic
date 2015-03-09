@@ -3,12 +3,14 @@
  */
 
 import java.awt.Button
+import java.awt.image.BufferedImage
 import java.io.{IOException, File}
 import java.util
 import java.util.ArrayList
 import java.util.logging.{Level, Logger}
 import javafx.beans.InvalidationListener
 import javafx.collections.{ListChangeListener, FXCollections, ObservableList}
+import javax.imageio.ImageIO
 
 import org.jaudiotagger.audio.{AudioFile, AudioFileIO}
 import org.jaudiotagger.tag.FieldKey
@@ -22,7 +24,7 @@ import scalafx.application.JFXApp.PrimaryStage
 import scalafx.collections.ObservableBuffer
 import scalafx.geometry._
 import scalafx.scene.control.ScrollPane.ScrollBarPolicy
-import scalafx.scene.image.Image
+import scalafx.scene.image.{ImageView, Image}
 import scalafx.scene.{layout, Scene}
 import scalafx.scene.control._
 import scalafx.scene.input.{DragEvent, MouseEvent}
@@ -79,28 +81,60 @@ object Rhythmic extends JFXApp {
 
     content = new VBox { thisVbox =>
       style = "-fx-background-color: gray;"
+
+      onMouseClicked = (e: Event) => {
+        println("mouse click!")
+        e.consume()
+      }
+
       content = Seq (
-        new Rectangle {
-          width <== thisPane.width
-          height <== width * 0.7
-          fill <== when(hover) choose Color.DARKCYAN otherwise TEAL
-        },
-        new Label {
-          maxWidth <== thisPane.width
-          //maxHeight <== thisPane.height * 0.1
-          text = album.name
-          style = "-fx-font-size: 8pt"
-          //fill = BLACK
-          alignment = Pos.BASELINE_CENTER
-        },
-        new Label {
-          maxWidth <== thisPane.width
-          //maxHeight <== thisPane.height * 0.1
-          text = album.artist
-          style = "-fx-font-size: 8pt"
-          //fill = BLACK
-          alignment = Pos.BASELINE_CENTER
+//        new Rectangle {
+//          width <== thisPane.width
+//          height <== width * 0.7
+//          fill <== when(hover) choose Color.DARKCYAN otherwise TEAL
+//        },
+        new ImageView {
+
+          def createAlbumImage(file: Option[File]): Image = {
+            file match {
+              case Some(f) => {
+                println(f.getCanonicalPath)
+                val bufferedImage: BufferedImage = ImageIO.read(f)
+                SwingFXUtils.toFXImage(bufferedImage, null)
+              }
+              case None => {
+                println("no image file found")
+                new Image("defaultAlbumArtwork.jpg")
+              }
+            }
+          }
+
+          image = createAlbumImage(album.artworkFile)
+          fitWidth <== thisPane.width
+          preserveRatio = true
+          smooth = true
+          cache = true
+          opacity <== when (hover) choose 0.5 otherwise 1.0
         }
+//        ,
+//        new Label {
+//          maxWidth <== thisPane.width
+//          //maxHeight <== thisPane.height * 0.1
+//          text = album.name
+//          style = "-fx-font-size: 8pt"
+//          //fill = BLACK
+//          alignment = Pos.BASELINE_CENTER
+//          visible <== when(hover) choose true otherwise false
+//        }
+// ,
+//        new Label {
+//          maxWidth <== thisPane.width
+//          //maxHeight <== thisPane.height * 0.1
+//          text = album.artist
+//          style = "-fx-font-size: 8pt"
+//          //fill = BLACK
+//          alignment = Pos.BASELINE_CENTER
+//        }
       )
     }
   })
