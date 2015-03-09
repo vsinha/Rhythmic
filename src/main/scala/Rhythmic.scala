@@ -10,6 +10,8 @@ import java.util.ArrayList
 import java.util.logging.{Level, Logger}
 import javafx.beans.InvalidationListener
 import javafx.collections.{ListChangeListener, FXCollections, ObservableList}
+import javafx.embed.swing.SwingFXUtils
+import javafx.event.EventHandler
 import javax.imageio.ImageIO
 
 import org.jaudiotagger.audio.{AudioFile, AudioFileIO}
@@ -22,6 +24,8 @@ import scalafx.Includes._
 import scalafx.application.JFXApp
 import scalafx.application.JFXApp.PrimaryStage
 import scalafx.collections.ObservableBuffer
+import scalafx.event
+import scalafx.event.Event
 import scalafx.geometry._
 import scalafx.scene.control.ScrollPane.ScrollBarPolicy
 import scalafx.scene.image.{ImageView, Image}
@@ -68,6 +72,8 @@ object Rhythmic extends JFXApp {
       endX = 0,
       stops = Stops(PALEGREEN, SEAGREEN))
   })
+
+
 
   val albumCellPadding: Int = 2
   val startingScreenWidth: Int = 640
@@ -209,7 +215,9 @@ object Rhythmic extends JFXApp {
     content = flowPane
   }
 
+  // keep the UI Cleaner
   this.scrollPane.setVbarPolicy(ScrollBarPolicy.NEVER)
+  this.scrollPane.setHbarPolicy(ScrollBarPolicy.NEVER)
 
   stage.scene = new Scene {
     root = new BorderPane {
