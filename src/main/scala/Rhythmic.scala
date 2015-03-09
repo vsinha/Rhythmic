@@ -4,11 +4,15 @@
 
 import java.awt.image.BufferedImage
 import java.io.File
+import java.net.URL
 import java.util.logging.{Level, Logger}
 import javafx.collections.{FXCollections, ObservableList}
 import javafx.embed.swing.SwingFXUtils
 import javax.imageio.ImageIO
 
+import de.umass.lastfm
+import de.umass.lastfm._
+import org.apache.commons.io.FileUtils
 import org.jaudiotagger.audio.{AudioFile, AudioFileIO}
 import org.jaudiotagger.tag.FieldKey
 
@@ -17,11 +21,10 @@ import scalafx.application.JFXApp
 import scalafx.application.JFXApp.PrimaryStage
 import scalafx.event.Event
 import scalafx.geometry._
-import scalafx.scene.control.ScrollPane.ScrollBarPolicy
-import scalafx.scene.image.{ImageView, Image}
 import scalafx.scene.Scene
+import scalafx.scene.control.ScrollPane.ScrollBarPolicy
 import scalafx.scene.control._
-import scalafx.scene.input.{DragEvent, MouseEvent}
+import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.layout._
 
 
@@ -32,7 +35,7 @@ object Rhythmic extends JFXApp {
 
   val topDir = new File("/Users/viraj/Music/testMusicFolder")
 
-  val albumCellPadding: Int = 2
+  val albumCellPadding: Int = 0
   val startingScreenWidth: Int = 640
   val startingScreenHeight: Int = 480
 
@@ -44,7 +47,7 @@ object Rhythmic extends JFXApp {
   }
 
   // initialize the observable list of albums
-  var albums: List[Album] = FileUtils.getAlbumsInDirectory(topDir)
+  var albums: List[Album] = RhythmicFileUtils.getAlbumsInDirectory(topDir)
   var albumList: ObservableList[Album] = FXCollections.observableArrayList()
   albums.foreach { albumList.add }
 
@@ -54,7 +57,7 @@ object Rhythmic extends JFXApp {
     val panes = albumList.map(f = album => new Pane {
       thisPane =>
       style = "-fx-background-color: gray;"
-      padding = Insets(0, 0, albumCellPadding, albumCellPadding)
+      padding = Insets(0, 0, albumCellPadding/2, albumCellPadding)
       prefWidth = (startingScreenWidth / 4) - albumCellPadding
       prefHeight <== prefWidth
 
@@ -66,36 +69,16 @@ object Rhythmic extends JFXApp {
           println("mouse click!")
           e.consume()
 
-          albumList.remove(album)
-          albumList.add(0, album)
-
-          albumList.map(a => println(a.name))
-
-          rectanglePanes = createRectanglePanes
-
-          updateFlowPane()
+          // this code moves the clicked album to the top of the list
+//          albumList.remove(album)
+//          albumList.add(0, album)
+//
+//          albumList.map(a => println(a.name))
         }
 
         content = album.content(thisPane)
       }
     })
-//
-//    panes.map(p => p.setOnDragDetected((event: MouseEvent) => {
-//      println("click drag detected")
-//      //event.consume()
-//    }))
-//
-//    panes.map(p => p.setOnDragOver((event: Event) => {
-//      println("drag over detected")
-//      //event.consume()
-//    }))
-//
-//    panes.map(p => p.setOnDragDropped((event: Event) => {
-//      println("drop detected")
-//      //event.setDropCompleted(true)
-//      //event.consume()
-//    }))
-
     panes
   }
 
@@ -113,6 +96,7 @@ object Rhythmic extends JFXApp {
 
 
   def updateFlowPane(): Unit = {
+    rectanglePanes = createRectanglePanes
     flowPane.content = rectanglePanes
   }
 
@@ -170,7 +154,7 @@ object Rhythmic extends JFXApp {
   }
 }
 
-object FileUtils {
+object RhythmicFileUtils {
 
   def getListOfSubDirectories(directoryName: String): List[File] =
     new File(directoryName).listFiles().filter(_.isDirectory).toList
@@ -231,6 +215,32 @@ object FileUtils {
       // set the album art if we can find any
       newAlbum.artworkFile = files.filter(_.isFile).find(isImageFiletype)
 
+      if (!newAlbum.artworkFile.isDefined) {
+        val lastfmKey: String = "c91a3cdf11a3f9ccbc1d861604eac168"
+        val album: lastfm.Album = Album.getInfo(newAlbum.artist, newAlbum.name, lastfmKey)
+
+        // mega, extralarge, large, medium, small all seem to usually have URLs
+        // TODO make a fallback mechanism to pick the largest available art size
+        //// (in case MEGA is absent)
+        val albumUrl = album.getImageURL(ImageSize.MEGA)
+        println("album art url: " + albumUrl)
+
+        // get the file extension from the url
+        val fileExtension = albumUrl.substring(albumUrl.lastIndexOf('.'), albumUrl.length)
+
+        // create the file handle
+        val coverArtFile = new File("coverArt/" + newAlbum.name + " art" + fileExtension)
+
+        if (!coverArtFile.exists()) {
+          // download the file if we don't have it already
+          println("downloading " + coverArtFile.getName)
+          FileUtils.copyURLToFile(new URL(albumUrl), coverArtFile)
+        }
+
+        newAlbum.artworkFile = Some(coverArtFile)
+      }
+
+
       println("album: " + newAlbum.name + ", artist: " + newAlbum.artist
         + ", artwork: " + newAlbum.artworkFile)
 
@@ -269,6 +279,25 @@ class Album(val name: String, val artist: String, var songs: List[AudioFile]) {
     )
   }
 }
+
+
+//
+//    panes.map(p => p.setOnDragDetected((event: MouseEvent) => {
+//      println("click drag detected")
+//      //event.consume()
+//    }))
+//
+//    panes.map(p => p.setOnDragOver((event: Event) => {
+//      println("drag over detected")
+//      //event.consume()
+//    }))
+//
+//    panes.map(p => p.setOnDragDropped((event: Event) => {
+//      println("drop detected")
+//      //event.setDropCompleted(true)
+//      //event.consume()
+//    }))
+
 
 //        ,
 //        new Label {
