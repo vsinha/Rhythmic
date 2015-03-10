@@ -1,4 +1,5 @@
 /**
+ * Rhythmic Music Player
  * Created by viraj on 2/25/15.
  */
 
@@ -47,7 +48,9 @@ object Rhythmic extends JFXApp {
   var albumList: ObservableList[Album] = FXCollections.observableArrayList()
   albumList.addAll(RhythmicFileUtils.getAlbumsInDirectory(musicDirectory))
 
+
   val rectanglePanes: ObservableList[Pane] = rectanglePanesBuilder
+
 
   def rectanglePanesBuilder: ObservableList[Pane] = {
     println("creating rectangle panes")
@@ -74,6 +77,7 @@ object Rhythmic extends JFXApp {
     panes
   }
 
+
   def mouseClickOnAlbumHandlerCreator(album: Album) = {
     // build and return this closure:
     (e: Event) => {
@@ -87,6 +91,7 @@ object Rhythmic extends JFXApp {
       updateFlowPane()
     }
   }
+
 
   def updateFlowPane(): Unit = {
     // we zip the refreshed album list into the existing set of panes
@@ -102,6 +107,7 @@ object Rhythmic extends JFXApp {
     flowPane.content = rectanglePanes
   }
 
+
   val flowPane: FlowPane = new FlowPane {
     prefWidth  = startingScreenWidth
     prefHeight = startingScreenHeight
@@ -111,55 +117,67 @@ object Rhythmic extends JFXApp {
     hgap = albumCellPadding
     columnHalignment = HPos.LEFT
     content = rectanglePanes
+    snapToPixel = true
   }
 
-  this.flowPane.setSnapToPixel(true)
 
+  // nifty function to scale an individual pane
+  def scaleRectangle(pane: Pane, multiplier: Double): Unit = {
+    val prefWidth = Math.floor(this.flowPane.getPrefWidth * multiplier) - albumCellPadding
+    pane.setPrefWidth(prefWidth)
+  }
+
+
+  // calculate the scaling multiplier of each album art display based
+  // on the width of the flow pane
+  def getMultiplierFromPaneWidth: Double = {
+      flowPane.getWidth match {
+      case n if   0 until 200 contains n => 1.0
+      case n if 200 until 400 contains n => 0.5
+      case n if 400 until 600 contains n => 1.0/3.0
+      case n if 600 until 800 contains n => 0.25
+      case _                             => 0.2
+    }
+  }
 
 
   def scaleRectangles(): Unit = {
     // gets called whenever the main window size changes
-    this.flowPane.setPrefWidth(this.scrollPane.getBoundsInLocal.getWidth)
-    this.flowPane.setMaxWidth(this.scrollPane.getBoundsInLocal.getWidth)
-    println("scrollpane width: " + this.scrollPane.getBoundsInLocal.getWidth)
+    println("stage width: " + stage.width.value)
 
-    // nifty function to scale an individual pane
-    def scaleRectangle(pane: Pane, multiplier: Double): Unit = {
-      val prefWidth = Math.floor(this.flowPane.getPrefWidth * multiplier) - albumCellPadding
-      pane.setPrefWidth(prefWidth)
-    }
+    this.flowPane.setPrefWidth(stage.width.value)
+    this.flowPane.setMaxWidth(stage.width.value)
 
-    // calculate the scaling multiplier of each album art display based
-    // on the width of the flow panel
-    var multiplier: Double = 1.0
-    flowPane.getWidth match {
-      case n if   0 until 200 contains n => multiplier = 1.0
-      case n if 200 until 400 contains n => multiplier = 0.5
-      case n if 400 until 600 contains n => multiplier = 1.0/3.0
-      case n if 600 until 800 contains n => multiplier = 0.25
-      case _                             => multiplier = 0.2
-    }
+
+    val multiplier: Double = getMultiplierFromPaneWidth
 
     // scale all the rectangles
     rectanglePanes.map(p => scaleRectangle(p, multiplier))
   }
 
-  stage = new PrimaryStage() {
-    title.value = "Hello Stage"
-    height = startingScreenHeight
-    width = startingScreenWidth
 
-    width onChange scaleRectangles
-    height onChange scaleRectangles
+  // allows us to scroll up and down (and technically left/right as well)
+  val scrollPane: ScrollPane = new ScrollPane {
+    //styleClass.add("noborder-scroll-pane")
+    style = "-fx-background-color:transparent"
+    prefHeight = startingScreenHeight
+    prefWidth = startingScreenWidth
+
+    // keep the UI Cleaner by hiding scrollbars
+    vbarPolicy = ScrollBarPolicy.NEVER
+    hbarPolicy = ScrollBarPolicy.NEVER
+
+    content = flowPane
   }
 
+
+  // should display some "now playing" info, maybe have some play/pause buttons?
   val statusBar: HBox = new HBox { thisBox =>
     content = Seq (
       new Label {
         prefWidth <== thisBox.width / 2
         text = "This text is a test."
         style = "-fx-font-size: 8pt"
-        //fill = BLACK
       },
       new Label {
         prefWidth <== thisBox.width / 2
@@ -167,45 +185,44 @@ object Rhythmic extends JFXApp {
         style = "-fx-font-size: 8pt"
         textAlignment = TextAlignment.RIGHT
         alignment = Pos.TOP_RIGHT
-        //fill = BLACK
       }
     )
   }
 
-  val scrollPane: ScrollPane = new ScrollPane {
-    //styleClass.add("noborder-scroll-pane")
-    style = "-fx-background-color:transparent"
-    prefHeight <== stage.height
-    prefWidth <== stage.width
-    content = flowPane
-  }
 
-  // keep the UI Cleaner by hiding scrollbars
-  this.scrollPane.setVbarPolicy(ScrollBarPolicy.NEVER)
-  this.scrollPane.setHbarPolicy(ScrollBarPolicy.NEVER)
+  stage = new PrimaryStage() {
+    title.value = "Rhythmic"
+    width = startingScreenWidth
+    height = startingScreenHeight
 
-  stage.scene = new Scene {
-    root = new BorderPane {
-      center = new VBox {
-        content = Seq (
-          statusBar,
-          scrollPane
-        )
+    // these bindings do the heavy lifting for resizing all the children
+    width onChange scaleRectangles
+    height onChange scaleRectangles
+
+    scene = new Scene {
+      root = new BorderPane {
+        center = new VBox { // vertically arrange statusbar
+          content = Seq(
+            statusBar,
+            scrollPane
+          )
+        }
       }
     }
   }
 }
 
+
+
 object RhythmicFileUtils {
 
-  def getListOfSubDirectories(directoryName: String): List[File] =
-    new File(directoryName).listFiles().filter(_.isDirectory).toList
-
+  // file extension helpers
   val musicFileExtensions = List(".mp3", ".mp4", ".flac", ".ogg", ".wav")
   val imageFileExtensions = List(".jpg", ".png", ".gif")
   def isMusicFiletype(file: File): Boolean = musicFileExtensions.exists(file.getName.endsWith)
   def isImageFiletype(file: File): Boolean = imageFileExtensions.exists(file.getName.endsWith)
 
+  
   // recurse all the way down to find all MP3s
   def getAudioFilesInDirectory(directory: File): List[AudioFile] = {
     println("dir: " + directory.getName)
@@ -221,66 +238,44 @@ object RhythmicFileUtils {
     val dirs: List[File] = files.filter(_.isDirectory)
 
     // recurse into directories
-    audioFiles ++ dirs.foldLeft(List[AudioFile]())((result, dir) => result ++ getAudioFilesInDirectory(dir))
+    audioFiles ++ dirs.foldLeft(List[AudioFile]())( (result, dir) => result ++ getAudioFilesInDirectory(dir) )
   }
 
-  def getAlbumsInDirectory(directory: File): List[Album] = {
-    // entirely based off folder structure rather than metadata
 
-    // initialize our list
-    val albums: List[Album] = List[Album]()
+  def getAlbumsInDirectory(directory: File): List[Album] = {
+    // entirely based off folder structure, rather than metadata
 
     // get all the files in the folder
     val files: List[File] = directory.listFiles().toList
 
     // recurse into all the directories, appending whatever is returned
-    val dirs = files.filter(_.isDirectory)
+    val dirs: List[File] = files.filter(_.isDirectory)
 
     if (dirs.size != 0) {
       // recurse if we find any directories at all
       // this will skip any free-floating music files
-      albums ::: dirs.foldLeft(List[Album]()) { (z, f) =>
+      List[Album]() ::: dirs.foldLeft(List[Album]()) { (z, f) =>
         val subAlbums = getAlbumsInDirectory(f)
         z ::: subAlbums
       }
+
     } else {
       // no directories, we're at a bottom level folder, which we assume is an album
       val audioFiles: List[AudioFile] = files.filter(_.isFile)
                                              .filter(isMusicFiletype)
                                              .map(AudioFileIO.read)
 
-      // create the album!
-      val newAlbum = new Album(audioFiles.head.getTag.getFirst(FieldKey.ALBUM),
+      // create the album
+      val newAlbum: Album = new Album(audioFiles.head.getTag.getFirst(FieldKey.ALBUM),
                                audioFiles.head.getTag.getFirst(FieldKey.ARTIST),
                                audioFiles)
 
-      // set the album art if we can find any
+      // set the album art if we can find any in the local folder
       newAlbum.artworkFile = files.filter(_.isFile).find(isImageFiletype)
 
       if (!newAlbum.artworkFile.isDefined) {
-        val lastfmKey: String = "c91a3cdf11a3f9ccbc1d861604eac168"
-        val album: lastfm.Album = Album.getInfo(newAlbum.artist, newAlbum.name, lastfmKey)
-
-        // mega, extralarge, large, medium, small all seem to usually have URLs
-        // TODO make a fallback mechanism to pick the largest available art size
-        //// (in case MEGA is absent)
-        val albumUrl = album.getImageURL(ImageSize.MEGA)
-
-        // get the file extension from the url
-        val fileExtension = albumUrl.substring(albumUrl.lastIndexOf('.'), albumUrl.length)
-
-        // create the file handle
-        val coverArtFile = new File("coverArt/" + newAlbum.name + " art" + fileExtension)
-
-        if (!coverArtFile.exists()) {
-          // download the file if we don't have it already
-          println("downloading " + coverArtFile.getName)
-          FileUtils.copyURLToFile(new URL(albumUrl), coverArtFile)
-        }
-
-        newAlbum.artworkFile = Some(coverArtFile)
+        newAlbum.artworkFile = getAlbumArtFromLastFm(newAlbum.artist, newAlbum.name)
       }
-
 
       println("album: " + newAlbum.name + ", artist: " + newAlbum.artist
         + ", artwork: " + newAlbum.artworkFile)
@@ -288,26 +283,52 @@ object RhythmicFileUtils {
       List(newAlbum)
     }
   }
+
+
+  def getAlbumArtFromLastFm(artist: String, albumName: String) : Option[File] = {
+    val lastfmKey: String = "c91a3cdf11a3f9ccbc1d861604eac168"
+    val album: lastfm.Album = Album.getInfo(artist, albumName, lastfmKey)
+
+    // mega, extralarge, large, medium, small all seem to usually have URLs
+    // TODO make a fallback mechanism to pick the largest available art size
+    //// (in case MEGA is absent)
+    val albumUrl: String = album.getImageURL(ImageSize.MEGA)
+
+    // get the file extension from the url
+    val fileExtension: String = albumUrl.substring(albumUrl.lastIndexOf('.'), albumUrl.length)
+
+    // TODO: save album art to the existing file structure and simplify all of this a bit
+    // create the file handle
+    val coverArtFile: File = new File("coverArt/" + albumName + " art" + fileExtension)
+
+    if (!coverArtFile.exists()) {
+      // download the file if we don't have it already
+      println("downloading " + coverArtFile.getName)
+      FileUtils.copyURLToFile(new URL(albumUrl), coverArtFile)
+    }
+
+    Some(coverArtFile)
+  }
+
 }
+
 
 class Album(val name: String, val artist: String, var songs: List[AudioFile]) {
   var artworkFile: Option[File] = None
 
-  // create the panel to view this album
+  // create a view of our album art
   def content (parentPane: Pane) = {
     println(name)
     Seq (
       new ImageView {
         def createAlbumImage(file: Option[File]): Image = {
           file match {
-            case Some(f) => {
-              //println(f.getCanonicalPath)
+            case Some(f) =>
               val bufferedImage: BufferedImage = ImageIO.read(f)
               SwingFXUtils.toFXImage(bufferedImage, null)
-            }
-            case None => {
+
+            case None =>
               new Image("defaultAlbumArtwork.jpg")
-            }
           }
         }
 
@@ -321,24 +342,3 @@ class Album(val name: String, val artist: String, var songs: List[AudioFile]) {
     )
   }
 }
-
-
-//
-//    panes.map(p => p.setOnDragDetected((event: MouseEvent) => {
-//      println("click drag detected")
-//      //event.consume()
-//    }))
-//
-//    panes.map(p => p.setOnDragOver((event: Event) => {
-//      println("drag over detected")
-//      //event.consume()
-//    }))
-//
-//    panes.map(p => p.setOnDragDropped((event: Event) => {
-//      println("drop detected")
-//      //event.setDropCompleted(true)
-//      //event.consume()
-//    }))
-
-
-//        ,
