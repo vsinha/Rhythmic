@@ -16,6 +16,8 @@ import org.apache.commons.io.FileUtils
 import org.jaudiotagger.audio.{AudioFile, AudioFileIO}
 import org.jaudiotagger.tag.FieldKey
 
+import collection.JavaConversions._
+
 import scalafx.Includes._
 import scalafx.application.JFXApp
 import scalafx.application.JFXApp.PrimaryStage
@@ -26,6 +28,9 @@ import scalafx.scene.control.ScrollPane.ScrollBarPolicy
 import scalafx.scene.control._
 import scalafx.scene.image.{Image, ImageView}
 import scalafx.scene.layout._
+import scalafx.scene.paint.Color
+import scalafx.scene.text.TextAlignment
+import scalafx.stage.StageStyle
 
 
 object Rhythmic extends JFXApp {
@@ -33,59 +38,75 @@ object Rhythmic extends JFXApp {
   // Log level for jaudiotagger is overly verbose by default
   Logger.getLogger("org.jaudiotagger").setLevel(Level.WARNING)
 
-  val topDir = new File("/Users/viraj/Music/testMusicFolder")
-
+  val musicDirectory = new File("/Users/viraj/Music/testMusicFolder")
   val albumCellPadding: Int = 0
-  val startingScreenWidth: Int = 640
-  val startingScreenHeight: Int = 480
-
-  def moveToFront[A](y: A, xs: List[A]): List[A] = {
-    xs.span(_ != y) match {
-      case (as, h :: bs) => h :: as ++ bs
-      case _ => xs
-    }
-  }
+  val startingScreenWidth: Int = 500
+  val startingScreenHeight: Int = 520
 
   // initialize the observable list of albums
-  var albums: List[Album] = RhythmicFileUtils.getAlbumsInDirectory(topDir)
   var albumList: ObservableList[Album] = FXCollections.observableArrayList()
-  albums.foreach { albumList.add }
+  albumList.addAll(RhythmicFileUtils.getAlbumsInDirectory(musicDirectory))
 
-  var rectanglePanes: ObservableList[Pane] = createRectanglePanes
+  val rectanglePanes: ObservableList[Pane] = rectanglePanesBuilder
 
-  def createRectanglePanes: ObservableList[Pane] = {
+  def rectanglePanesBuilder: ObservableList[Pane] = {
+    println("creating rectangle panes")
     val panes = albumList.map(f = album => new Pane {
       thisPane =>
       style = "-fx-background-color: gray;"
-      padding = Insets(0, 0, albumCellPadding/2, albumCellPadding)
-      prefWidth = (startingScreenWidth / 4) - albumCellPadding
+
+      prefWidth = (startingScreenWidth / 3) - albumCellPadding
       prefHeight <== prefWidth
 
-      content = new VBox {
-        thisVbox =>
-        style = "-fx-background-color: gray;"
+      onMouseClicked = (e: Event) => {
+        println("mouse click on " + album.name)
+        e.consume()
 
-        onMouseClicked = (e: Event) => {
-          println("mouse click!")
-          e.consume()
+        // this code moves the clicked album to the top of the list
+        albumList.remove(album)
+        albumList.add(0, album)
 
-          // this code moves the clicked album to the top of the list
-//          albumList.remove(album)
-//          albumList.add(0, album)
-//
-//          albumList.map(a => println(a.name))
-        }
-
-        content = album.content(thisPane)
+        updateFlowPane()
       }
+
+      content = album.content(thisPane)
     })
     panes
   }
 
+  def mouseClickOnAlbumHandlerCreator(album: Album) = {
+    // build and return this closure:
+    (e: Event) => {
+      println("mouse click on " + album.name)
+      e.consume()
+
+      // this code moves the clicked album to the top of the list
+      albumList.remove(album)
+      albumList.add(0, album)
+
+      updateFlowPane()
+    }
+  }
+
+  def updateFlowPane(): Unit = {
+    // we zip the refreshed album list into the existing set of panes
+    // to avoid having to reload and resize every pane
+    (rectanglePanes, albumList).zipped map ((p, a) => {
+      // update the content
+      p.content = a.content(p)
+
+      // and update the onClick handler to point at the new album sitting in this pane
+      p.onMouseClicked = mouseClickOnAlbumHandlerCreator(a)
+    })
+
+    flowPane.content = rectanglePanes
+  }
+
   val flowPane: FlowPane = new FlowPane {
-    prefWidth  = 640
-    prefHeight = 100
+    prefWidth  = startingScreenWidth
+    prefHeight = startingScreenHeight
     orientation = Orientation.HORIZONTAL
+    style = "-fx-background-color:transparent"
     vgap = albumCellPadding
     hgap = albumCellPadding
     columnHalignment = HPos.LEFT
@@ -95,10 +116,6 @@ object Rhythmic extends JFXApp {
   this.flowPane.setSnapToPixel(true)
 
 
-  def updateFlowPane(): Unit = {
-    rectanglePanes = createRectanglePanes
-    flowPane.content = rectanglePanes
-  }
 
   def scaleRectangles(): Unit = {
     // gets called whenever the main window size changes
@@ -106,25 +123,25 @@ object Rhythmic extends JFXApp {
     this.flowPane.setMaxWidth(this.scrollPane.getBoundsInLocal.getWidth)
     println("scrollpane width: " + this.scrollPane.getBoundsInLocal.getWidth)
 
-    var multiplier: Double = 1.0
-
-    // func to scale an individual pane
+    // nifty function to scale an individual pane
     def scaleRectangle(pane: Pane, multiplier: Double): Unit = {
       val prefWidth = Math.floor(this.flowPane.getPrefWidth * multiplier) - albumCellPadding
       pane.setPrefWidth(prefWidth)
     }
 
-    this.rectanglePanes.map(p => {
-      flowPane.getWidth match {
-        case n if   0 until 200 contains n => multiplier = 1.0
-        case n if 200 until 400 contains n => multiplier = 0.5
-        case n if 400 until 600 contains n => multiplier = 1.0/3.0
-        case n if 600 until 800 contains n => multiplier = 0.25
-        case _                             => multiplier = 0.2
-      }
+    // calculate the scaling multiplier of each album art display based
+    // on the width of the flow panel
+    var multiplier: Double = 1.0
+    flowPane.getWidth match {
+      case n if   0 until 200 contains n => multiplier = 1.0
+      case n if 200 until 400 contains n => multiplier = 0.5
+      case n if 400 until 600 contains n => multiplier = 1.0/3.0
+      case n if 600 until 800 contains n => multiplier = 0.25
+      case _                             => multiplier = 0.2
+    }
 
-      scaleRectangle(p, multiplier)
-    })
+    // scale all the rectangles
+    rectanglePanes.map(p => scaleRectangle(p, multiplier))
   }
 
   stage = new PrimaryStage() {
@@ -136,8 +153,28 @@ object Rhythmic extends JFXApp {
     height onChange scaleRectangles
   }
 
+  val statusBar: HBox = new HBox { thisBox =>
+    content = Seq (
+      new Label {
+        prefWidth <== thisBox.width / 2
+        text = "This text is a test."
+        style = "-fx-font-size: 8pt"
+        //fill = BLACK
+      },
+      new Label {
+        prefWidth <== thisBox.width / 2
+        text = "This is another test"
+        style = "-fx-font-size: 8pt"
+        textAlignment = TextAlignment.RIGHT
+        alignment = Pos.TOP_RIGHT
+        //fill = BLACK
+      }
+    )
+  }
+
   val scrollPane: ScrollPane = new ScrollPane {
-    styleClass.add("noborder-scroll-pane")
+    //styleClass.add("noborder-scroll-pane")
+    style = "-fx-background-color:transparent"
     prefHeight <== stage.height
     prefWidth <== stage.width
     content = flowPane
@@ -149,7 +186,12 @@ object Rhythmic extends JFXApp {
 
   stage.scene = new Scene {
     root = new BorderPane {
-      center = scrollPane
+      center = new VBox {
+        content = Seq (
+          statusBar,
+          scrollPane
+        )
+      }
     }
   }
 }
@@ -223,7 +265,6 @@ object RhythmicFileUtils {
         // TODO make a fallback mechanism to pick the largest available art size
         //// (in case MEGA is absent)
         val albumUrl = album.getImageURL(ImageSize.MEGA)
-        println("album art url: " + albumUrl)
 
         // get the file extension from the url
         val fileExtension = albumUrl.substring(albumUrl.lastIndexOf('.'), albumUrl.length)
@@ -254,12 +295,13 @@ class Album(val name: String, val artist: String, var songs: List[AudioFile]) {
 
   // create the panel to view this album
   def content (parentPane: Pane) = {
+    println(name)
     Seq (
       new ImageView {
         def createAlbumImage(file: Option[File]): Image = {
           file match {
             case Some(f) => {
-              println(f.getCanonicalPath)
+              //println(f.getCanonicalPath)
               val bufferedImage: BufferedImage = ImageIO.read(f)
               SwingFXUtils.toFXImage(bufferedImage, null)
             }
@@ -300,21 +342,3 @@ class Album(val name: String, val artist: String, var songs: List[AudioFile]) {
 
 
 //        ,
-//        new Label {
-//          maxWidth <== thisPane.width
-//          //maxHeight <== thisPane.height * 0.1
-//          text = album.name
-//          style = "-fx-font-size: 8pt"
-//          //fill = BLACK
-//          alignment = Pos.BASELINE_CENTER
-//          visible <== when(hover) choose true otherwise false
-//        }
-// ,
-//        new Label {
-//          maxWidth <== thisPane.width
-//          //maxHeight <== thisPane.height * 0.1
-//          text = album.artist
-//          style = "-fx-font-size: 8pt"
-//          //fill = BLACK
-//          alignment = Pos.BASELINE_CENTER
-//        }
