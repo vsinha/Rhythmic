@@ -34,6 +34,7 @@ object Rhythmic extends JFXApp {
   var albumList: ObservableList[Album] = FXCollections.observableArrayList()
   albumList.addAll(RhythmicFileUtils.getAlbumsInDirectory(musicDirectory))
 
+  // each rectangle pane should hold an album and play controls
   val rectanglePanes: ObservableList[Pane] = rectanglePanesBuilder
 
   def rectanglePanesBuilder: ObservableList[Pane] = {
@@ -98,7 +99,7 @@ object Rhythmic extends JFXApp {
 
 
   // nifty function to scale an individual pane
-  def scaleRectangle(pane: Pane, multiplier: Double): Unit = {
+  private def _scaleRectangle(pane: Pane, multiplier: Double): Unit = {
     val prefWidth = Math.floor(this.flowPane.getPrefWidth * multiplier) - albumCellPadding
     pane.setPrefWidth(prefWidth)
   }
@@ -106,7 +107,7 @@ object Rhythmic extends JFXApp {
 
   // calculate the scaling multiplier of each album art display based
   // on the width of the flow pane
-  def getMultiplierFromPaneWidth: Double = {
+  private def _getMultiplierFromPaneWidth: Double = {
       flowPane.getWidth match {
       case n if   0 until 200 contains n => 1.0
       case n if 200 until 400 contains n => 0.5
@@ -121,22 +122,21 @@ object Rhythmic extends JFXApp {
     // gets called whenever the main window size changes
     println("stage width: " + stage.width.value)
 
-    this.flowPane.setPrefWidth(stage.width.value)
-    this.flowPane.setMaxWidth(stage.width.value)
+    this.flowPane setPrefWidth stage.width.value
+    this.flowPane setMaxWidth  stage.width.value
 
-    val multiplier: Double = getMultiplierFromPaneWidth
+    val multiplier: Double = _getMultiplierFromPaneWidth
 
     // scale all the rectangles
-    rectanglePanes.map(p => scaleRectangle(p, multiplier))
+    rectanglePanes.map(p => _scaleRectangle(p, multiplier))
   }
 
 
   // allows us to scroll up and down (and technically left/right as well)
   val scrollPane: ScrollPane = new ScrollPane {
-    //styleClass.add("noborder-scroll-pane")
     style = "-fx-background-color:transparent"
+    prefWidth  = startingScreenWidth
     prefHeight = startingScreenHeight
-    prefWidth = startingScreenWidth
 
     // keep the UI Cleaner by hiding scrollbars
     vbarPolicy = ScrollBarPolicy.NEVER
@@ -167,11 +167,11 @@ object Rhythmic extends JFXApp {
 
   stage = new PrimaryStage() {
     title.value = "Rhythmic"
-    width = startingScreenWidth
+    width  = startingScreenWidth
     height = startingScreenHeight
 
     // these bindings do the heavy lifting for resizing all the children
-    width onChange scaleRectangles
+    width  onChange scaleRectangles
     height onChange scaleRectangles
 
     scene = new Scene {
