@@ -26,7 +26,6 @@ object Rhythmic extends JFXApp {
   Logger.getLogger("org.jaudiotagger").setLevel(Level.WARNING)
 
   val musicDirectory = new File("/Users/viraj/Music/testMusicFolder")
-  val albumCellPadding = 0
   val startingScreenWidth  = 500
   val startingScreenHeight = 520
 
@@ -37,13 +36,15 @@ object Rhythmic extends JFXApp {
   // each rectangle pane should hold an album and play controls
   val rectanglePanes: ObservableList[Pane] = rectanglePanesBuilder
 
+
   def rectanglePanesBuilder: ObservableList[Pane] = {
     println("creating rectangle panes")
     val panes = albumList.map(f = album => new Pane { thisPane =>
       style = "-fx-background-color: gray;"
 
-      // tie width to height to automagically maintain squares
-      prefWidth = (startingScreenWidth / 3) - albumCellPadding
+      // bind width to height to automagically maintain squares
+      // start up with a nice 3x3 grid of albums
+      prefWidth = startingScreenWidth / 3
       prefHeight <== prefWidth
 
       // set up the click handler
@@ -70,6 +71,9 @@ object Rhythmic extends JFXApp {
   }
 
 
+  // this is the only function that seems to need this flowPane field
+  // TODO maybe refactor this so flowpane doesn't have to be explicitly exposed at all?
+  var flowPane: FlowPane = null
   def updateFlowPane(): Unit = {
     // we zip the refreshed album list into the existing set of panes
     // to avoid having to reload and resize every pane
@@ -85,22 +89,9 @@ object Rhythmic extends JFXApp {
   }
 
 
-  val flowPane: FlowPane = new FlowPane {
-    prefWidth  = startingScreenWidth
-    prefHeight = startingScreenHeight
-    orientation = Orientation.HORIZONTAL
-    style = "-fx-background-color:transparent"
-    vgap = albumCellPadding
-    hgap = albumCellPadding
-    columnHalignment = HPos.LEFT
-    content = rectanglePanes
-    snapToPixel = true
-  }
-
-
   // nifty function to scale an individual pane
   private def _scaleRectangle(pane: Pane, multiplier: Double): Unit = {
-    val prefWidth = Math.floor(this.flowPane.getPrefWidth * multiplier) - albumCellPadding
+    val prefWidth = Math.floor(this.stage.getWidth * multiplier)
     pane.setPrefWidth(prefWidth)
   }
 
@@ -108,7 +99,7 @@ object Rhythmic extends JFXApp {
   // calculate the scaling multiplier of each album art display based
   // on the width of the flow pane
   private def _getMultiplierFromPaneWidth: Double = {
-      flowPane.getWidth match {
+      stage.getWidth match {
       case n if   0 until 200 contains n => 1.0
       case n if 200 until 400 contains n => 0.5
       case n if 400 until 600 contains n => 1.0/3.0
@@ -122,27 +113,8 @@ object Rhythmic extends JFXApp {
     // gets called whenever the main window size changes
     println("stage width: " + stage.width.value)
 
-    this.flowPane setPrefWidth stage.width.value
-    this.flowPane setMaxWidth  stage.width.value
-
-    val multiplier: Double = _getMultiplierFromPaneWidth
-
     // scale all the rectangles
-    rectanglePanes.map(p => _scaleRectangle(p, multiplier))
-  }
-
-
-  // allows us to scroll up and down (and technically left/right as well)
-  val scrollPane: ScrollPane = new ScrollPane {
-    style = "-fx-background-color:transparent"
-    prefWidth  = startingScreenWidth
-    prefHeight = startingScreenHeight
-
-    // keep the UI Cleaner by hiding scrollbars
-    vbarPolicy = ScrollBarPolicy.NEVER
-    hbarPolicy = ScrollBarPolicy.NEVER
-
-    content = flowPane
+    rectanglePanes.map(p => _scaleRectangle(p, _getMultiplierFromPaneWidth))
   }
 
 
@@ -165,7 +137,7 @@ object Rhythmic extends JFXApp {
   }
 
 
-  stage = new PrimaryStage() {
+  stage = new PrimaryStage() { thisStage =>
     title.value = "Rhythmic"
     width  = startingScreenWidth
     height = startingScreenHeight
@@ -175,14 +147,35 @@ object Rhythmic extends JFXApp {
     height onChange scaleRectangles
 
     scene = new Scene {
+
       root = new BorderPane {
+
         center = new VBox { // vertically arrange statusbar
           content = Seq(
+          
             statusBar,
-            scrollPane
-          )
-        }
-      }
-    }
-  }
+
+            new ScrollPane {
+              style = "-fx-background-color:transparent"
+
+              // keep the UI Cleaner by hiding scrollbars
+              vbarPolicy = ScrollBarPolicy.NEVER
+              hbarPolicy = ScrollBarPolicy.NEVER
+
+              content = new FlowPane { thisFlowPane =>
+                flowPane = thisFlowPane // set the class-wide handle to this
+                prefWidth  <== thisStage.width
+                prefHeight <== thisStage.height
+                orientation = Orientation.HORIZONTAL
+                style = "-fx-background-color:transparent"
+                columnHalignment = HPos.CENTER
+                content = rectanglePanes
+                snapToPixel = true
+              } // end FlowPane
+            } // end ScrollPane
+          ) // end VBox Seq
+        } // end VBox
+      } // end BorderPane
+    } // end Scene
+  } // end Stage
 }

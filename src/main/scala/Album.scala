@@ -11,8 +11,11 @@ import javax.imageio.ImageIO
 import org.jaudiotagger.audio.AudioFile
 
 import scalafx.Includes._
+import scalafx.geometry.Pos
+import scalafx.scene.control.Label
 import scalafx.scene.image.{Image, ImageView}
-import scalafx.scene.layout.Pane
+import scalafx.scene.layout.{VBox, Pane}
+import scalafx.scene.text.TextAlignment
 
 
 class Album(val name: String, val artist: String, var songs: List[AudioFile]) {
@@ -35,13 +38,35 @@ class Album(val name: String, val artist: String, var songs: List[AudioFile]) {
 
   // create a view of our album art
   def content (parentPane: Pane) = {
-    new ImageView {
-      image = artworkImage
-      fitWidth <== parentPane.width
-      preserveRatio = true
-      smooth = true
-      cache = true
-      opacity <== when (hover) choose 0.5 otherwise 1.0
-    }
+    Seq (
+      new ImageView {
+        image = artworkImage
+        fitWidth <== parentPane.width
+        preserveRatio = true
+        smooth = true
+        cache = true
+        opacity <== when (hover) choose 0.5 otherwise 1.0
+      },
+      new VBox { thisVBox =>
+        style = "-fx-background-color:white"
+        opacity <== when (hover) choose 0.5 otherwise 0
+        prefWidth <== parentPane.width
+        prefHeight <== parentPane.height
+        content = {
+          Seq (
+            new Label {
+              prefWidth <== thisVBox.width
+              prefHeight <== thisVBox.height
+
+              style = "-fx-font-size: 20pt"
+              alignment = Pos.CENTER
+              textAlignment = TextAlignment.CENTER
+              text = "Hello\nWorld"
+            }
+          )
+        }
+      }
+
+    ) // album content seq
   }
 }
