@@ -26,37 +26,27 @@ object Rhythmic extends JFXApp {
   Logger.getLogger("org.jaudiotagger").setLevel(Level.WARNING)
 
   val musicDirectory = new File("/Users/viraj/Music/testMusicFolder")
-  val albumCellPadding: Int = 0
-  val startingScreenWidth: Int = 500
-  val startingScreenHeight: Int = 520
+  val albumCellPadding = 0
+  val startingScreenWidth  = 500
+  val startingScreenHeight = 520
 
   // initialize the observable list of albums
   var albumList: ObservableList[Album] = FXCollections.observableArrayList()
   albumList.addAll(RhythmicFileUtils.getAlbumsInDirectory(musicDirectory))
 
-
   val rectanglePanes: ObservableList[Pane] = rectanglePanesBuilder
-
 
   def rectanglePanesBuilder: ObservableList[Pane] = {
     println("creating rectangle panes")
-    val panes = albumList.map(f = album => new Pane {
-      thisPane =>
+    val panes = albumList.map(f = album => new Pane { thisPane =>
       style = "-fx-background-color: gray;"
 
+      // tie width to height to automagically maintain squares
       prefWidth = (startingScreenWidth / 3) - albumCellPadding
       prefHeight <== prefWidth
 
-      onMouseClicked = (e: Event) => {
-        println("mouse click on " + album.name)
-        e.consume()
-
-        // this code moves the clicked album to the top of the list
-        albumList.remove(album)
-        albumList.add(0, album)
-
-        updateFlowPane()
-      }
+      // set up the click handler
+      onMouseClicked = mouseClickOnAlbumHandlerCreator(album)
 
       content = album.content(thisPane)
     })
@@ -65,8 +55,8 @@ object Rhythmic extends JFXApp {
 
 
   def mouseClickOnAlbumHandlerCreator(album: Album) = {
-    // build and return this closure:
     (e: Event) => {
+      // build and return this closure:
       println("mouse click on " + album.name)
       e.consume()
 
@@ -133,7 +123,6 @@ object Rhythmic extends JFXApp {
 
     this.flowPane.setPrefWidth(stage.width.value)
     this.flowPane.setMaxWidth(stage.width.value)
-
 
     val multiplier: Double = getMultiplierFromPaneWidth
 

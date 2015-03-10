@@ -85,7 +85,7 @@ object RhythmicFileUtils {
 
 
   def getAlbumArtFromLastFm(artist: String, albumName: String) : Option[File] = {
-    val lastfmKey: String = "c91a3cdf11a3f9ccbc1d861604eac168"
+    val lastfmKey = "c91a3cdf11a3f9ccbc1d861604eac168"
     val album: lastfm.Album = Album.getInfo(artist, albumName, lastfmKey)
 
     // mega, extralarge, large, medium, small all seem to usually have URLs
